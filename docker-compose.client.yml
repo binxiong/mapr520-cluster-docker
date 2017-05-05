@@ -1,0 +1,17 @@
+version: '2'
+services:
+    mapr-client:
+        container_name: "mapr-client"
+        image: "jameshtsun/mapr-client:centos73"
+        hostname: mapr-client
+        privileged: true
+        environment:
+         - "KDC_HOST_NAME=${kdchost}"
+         - "LDAP_HOST_NAME=${ldaphost}"
+         - "CL_NAME=${clname}"
+         - "REALM=${realm}"
+         - "ADMIN_PASSWD=${passwd}"
+         - "ADMIN_USER=${admin}"
+         - "LDAP_USER=${ldapuser}"
+        stdin_open: true
+        tty: true

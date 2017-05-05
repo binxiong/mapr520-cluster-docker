@@ -1,0 +1,18 @@
+#!/bin/bash
+rm -rf /tmp/*
+purgecontainer
+#docker rmi `docker images | awk '{print $3}' | grep -v IMAGE | xargs`
+docker network rm `docker network ls | awk '{print $1,$2}' | grep -v bridge | grep -v host | grep -v none | awk '{print $1}' | grep -v NETWORK | xargs`
+rm -rf /home/maprdude
+rm -rf /home/ldapdude
+rm -rf /var/logs/mapr_install.log
+rm -rf /var/log/kadmin*
+rm -rf /var/log/krb5*
+rm -rf /var/log/cloud-init*
+rm -rf /root/.ssh/*
+rm -rf ~ec2-user/.ssh/*
+sed -i '/^mapr/d' /etc/sudoers
+sed -i '/maprdude/d' /etc/passwd
+echo "127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4" > /etc/hosts
+echo "::1         localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /etc/hosts
+cp env.sh /tmp

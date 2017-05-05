@@ -1,0 +1,91 @@
+version: '2'
+services:
+    node0:
+        container_name: "${hname}0"
+        image: "jameshtsun/mapr520v2:centos72"
+        hostname: ${hname}0
+        ports:
+         - "8443:8443"
+         - "2222:22"
+         - "8888:8888"
+         - "8047:8047"
+         - "3000:3000"
+         - "10000:10000"
+        privileged: true
+        devices:
+         - "/dev/xvdb:/dev/xvdb"
+        environment:
+         - "CL_NAME=${clname}"
+         - "NNODES=${nnodes}"
+         - "HOST_NAME=${hname}0"
+         - "HOST_BLOCK_DEVICE=/dev/xvdb"
+         - "ADMIN_USER=${admin}"
+         - "ADMIN_PASSWD=${passwd}"
+         - "REALM=${realm}"
+         - "KDC_HOST_NAME=${kdchost}"
+         - "LDAP_USER=${ldapuser}"
+        stdin_open: true
+        tty: true
+    node1:
+        container_name: "${hname}1"
+        image: "jameshtsun/mapr520v2:centos72"
+        hostname: ${hname}1
+        ports:
+         - "5601:5601"
+         - "8089:8088"
+         - "8091:8090"
+        privileged: true
+        devices:
+         - "/dev/xvdc:/dev/xvdc"
+        environment:
+         - "CL_NAME=${clname}"
+         - "NNODES=${nnodes}"
+         - "HOST_NAME=${hname}1"
+         - "HOST_BLOCK_DEVICE=/dev/xvdc"
+         - "ADMIN_USER=${admin}"
+         - "ADMIN_PASSWD=${passwd}"
+         - "REALM=${realm}"
+         - "KDC_HOST_NAME=${kdchost}"
+        stdin_open: true
+        tty: true
+    node2:
+        container_name: "${hname}2"
+        image: "jameshtsun/mapr520v2:centos72"
+        hostname: ${hname}2
+        ports:
+         - "8088:8088"
+         - "19888:19888"
+         - "19890:19890"
+         - "8090:8090"
+        privileged: true
+        devices:
+         - "/dev/xvdd:/dev/xvdd"
+        environment:
+         - "CL_NAME=${clname}"
+         - "NNODES=${nnodes}"
+         - "HOST_NAME=${hname}2"
+         - "HOST_BLOCK_DEVICE=/dev/xvdd"
+         - "ADMIN_USER=${admin}"
+         - "ADMIN_PASSWD=${passwd}"
+         - "REALM=${realm}"
+         - "KDC_HOST_NAME=${kdchost}"
+        stdin_open: true
+        tty: true
+    node3:
+        container_name: "${hname}3"
+        image: "jameshtsun/mapr520v2:centos72"
+        hostname: ${hname}3
+        privileged: true
+        devices:
+         - "/dev/xvde:/dev/xvde"
+        environment:
+         - "CL_NAME=${clname}"
+         - "NNODES=${nnodes}"
+         - "HOST_NAME=${hname}3"
+         - "HOST_BLOCK_DEVICE=/dev/xvde"
+         - "ADMIN_USER=${admin}"
+         - "ADMIN_PASSWD=${passwd}"
+         - "REALM=${realm}"
+         - "KDC_HOST_NAME=${kdchost}"
+        stdin_open: true
+        tty: true

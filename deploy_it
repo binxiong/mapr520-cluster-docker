@@ -1,0 +1,93 @@
+#!/bin/bash
+exec > >(tee -i /var/log/mapr_install.log)
+
+purgecontainer
+
+. /tmp/env.sh
+
+#Take care of partitions
+#sh delpart $blockdev
+#sh mkpart $blockdev
+
+#Deploy LDAP and KDC
+./deploy_ldap
+isldapup=$(docker exec ${ldaphost} bash -c 'lsof -i :389 | grep LISTEN | wc -l')
+
+if [[ $isldapup -eq "0" ]];then
+purgecontainer
+./deploy_ldap
+fi
+
+if [[ $mode == "krb" ]];then
+./deploy_kdc
+fi
+
+#Deploy base cluster
+if [[ $mode == "base" ]]; then
+   ./deploy_mapr
+   ./deploy_client
+   cmd=`docker exec ${hname}0 grep "/opt/mapr/server/configure.sh" /opt/mapr/logs/configure.log | grep "\-C" | awk -FCMD: '{print $2}'`
+   docker exec mapr-client bash $cmd -c 
+fi
+
+#Deploy secure cluster
+if [[ "$mode" == "secure" ]]; then
+   ./deploy_mapr
+   docker exec ${hname}0 bash -c "sh /usr/sbin/enable_sec.sh"
+
+   # restart Drill bits with long standing maprticket
+   nodes=`docker exec ${hname}0 nodeset -e @all`
+   docker exec ${hname}0 bash -c "maprcli node services -name drill-bits -action restart -nodes $nodes"
+
+   ./deploy_client
+   cmd=`docker exec ${hname}0 grep "/opt/mapr/server/configure.sh" /opt/mapr/logs/configure.log | grep "\-secure" | awk -FCMD: '{print $2}'`
+
+   rm -rf /tmp/ssl_truststore
+   docker cp ${hname}0:/opt/mapr/conf/ssl_truststore /tmp
+   docker cp /tmp/ssl_truststore mapr-client:/opt/mapr/conf
+   docker exec mapr-client chmod 644 /opt/mapr/conf/ssl_truststore
+
+   docker exec mapr-client bash $cmd -c -secure
+   
+fi
+
+#Deploy Kerberos cluster
+if [[ "$mode" == "krb" ]]; then
+
+  ./deploy_mapr
+
+  #First enable secure cluster
+  docker exec ${hname}0 bash -c "sh /usr/sbin/enable_sec.sh"
+
+  # restart Drill bits with long standing maprticket
+   nodes=`docker exec ${hname}0 nodeset -e @all`
+   docker exec ${hname}0 bash -c "maprcli node services -name drill-bits -action restart -nodes $nodes"
+
+  #Then enable Kerberos
+  docker cp ${kdchost}:/root/mapr.keytab /tmp
+  docker cp /tmp/mapr.keytab ${hname}0:/root
+  docker exec ${kdchost} rm -rf /root/mapr.keytab
+  docker exec ${hname}0 bash -c "sh /usr/sbin/krb_init.sh"
+ 
+  ./deploy_client
+
+  cmd=`docker exec ${hname}0 grep "/opt/mapr/server/configure.sh" /opt/mapr/logs/configure.log |  grep "\-P" | awk -FCMD: '{print $2}'`
+
+   rm -rf /tmp/ssl_truststore
+   docker cp ${hname}0:/opt/mapr/conf/ssl_truststore /tmp
+   docker cp /tmp/ssl_truststore mapr-client:/opt/mapr/conf
+   docker exec mapr-client chmod 644 /opt/mapr/conf/ssl_truststore
+
+   docker exec mapr-client bash $cmd -c -secure
+    
+fi
+
+#Copy user scripts to client node
+docker cp ${hname}0:/usr/local/bin /tmp
+docker cp /tmp/bin mapr-client:/usr/local
+
+#docker exec ${hname}0 bash -c "maprcli acl edit -type cluster -user $ldapuser:fc"
+#docker exec ${hname}0 bash -c "hadoop fs -mkdir /user/$ldapuser"
+#docker exec ${hname}0 bash -c "hadoop fs -chown $ldapuser /user/$ldapuser"
+#docker exec ${hname}0 bash -c "hadoop fs -chgrp mygroup /user/$ldapuser"
+

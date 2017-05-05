@@ -1,0 +1,29 @@
+#!/bin/bash
+composef="docker-compose.kdc.yml"
+dockerf="Dockerfile.kdc"
+
+#docker build -f $dockerf --tag jameshtsun/kdc .
+#docker pull jameshtsun/kdc
+
+. /tmp/env.sh
+docker-compose -f $composef kill kdc
+docker-compose -f $composef rm -f kdc
+docker-compose -f $composef up -d
+
+#Initialize KDC
+docker exec $kdchost bash -c "perl /usr/sbin/kdc_init.pl"
+
+#Generate MapR keytab and copy it to the first MapR node
+docker exec ${kdchost} kadmin.local -q "ktadd -k /root/mapr.keytab mapr/$clname@$realm"
+docker cp ${kdchost}:/root/mapr.keytab /tmp
+docker exec ${kdchost} rm -rf /root/mapr.keytab
+#docker cp /tmp/mapr.keytab ${hname}0:/root
+
+#Start KDC services
+echo "Starting KDC services..."
+docker exec $kdchost bash -c "systemctl start kadmin"
+docker exec $kdchost bash -c "systemctl start krb5kdc"
+
+docker exec ${kdchost} kadmin.local -q "ktadd -k /root/mapr.keytab mapr/$clname@$realm"
+
+echo "Done..."

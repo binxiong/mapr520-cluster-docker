@@ -1,0 +1,11 @@
+export clname=mapr520
+export hname=${clname}-node
+export admin=maprdude
+export passwd=m@prtest
+export ldapuser=ldapdude
+export nnodes=5
+export realm=MAPR.COM
+export kdchost=kdc
+export ldaphost=ldap
+export mode=base
+export centos=centos72

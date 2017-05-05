@@ -1,0 +1,18 @@
+version: '2'
+services:
+    kdc:
+        container_name: "${kdchost}"
+        image: "jameshtsun/kdc"
+        hostname: ${kdchost}
+        ports:
+         - "22222:22"
+        privileged: true
+        environment:
+         - "KDC_HOST_NAME=${kdchost}"
+         - "CL_NAME=${clname}"
+         - "REALM=${realm}"
+         - "ADMIN_PASSWD=${passwd}"
+         - "ADMIN_USER=${admin}"
+         - "LDAP_USER=${ldapuser}"
+        stdin_open: true
+        tty: true

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+docker ps -a | awk '{print $1,$(NF)}'
+echo
+echo "Which containter you want to enter?"
+read contain
+#nsenter --mount --uts --ipc --net --pid --target `docker inspect --format '{{ .State.Pid }}' $contain`
+docker exec -it $contain bash

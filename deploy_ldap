@@ -1,0 +1,22 @@
+#!/bin/bash
+composef="docker-compose.ldap.yml"
+dockerf="Dockerfile.ldap"
+
+#docker build -f $dockerf --tag jameshtsun/ldap .
+#docker pull jameshtsun/ldap
+
+. /tmp/env.sh
+docker-compose -f $composef kill ldap
+docker-compose -f $composef rm -f ldap
+docker-compose -f $composef up -d
+
+#Start OpenLDAP services
+sleep 3
+echo "Starting LDAP services..."
+docker exec $ldaphost bash -c "systemctl enable slapd"
+docker exec $ldaphost bash -c "systemctl start slapd"
+docker exec $ldaphost bash -c "sh /usr/sbin/ldap_init.sh"
+docker exec $ldaphost bash -c "rm -rf /root/ldif"
+#docker exec ${hname}0 clush -a authconfig --enableldap --enableldapauth --ldapserver=${ldaphost} --ldapbasedn="dc=mapr,dc=com" --enablemkhomedir --update
+
+echo "Done..."

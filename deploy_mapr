@@ -1,0 +1,56 @@
+#!/bin/bash
+. /tmp/env.sh
+dockerf="Dockerfile.mapr520.v2"
+composef="docker-compose.mapr520.${nnodes}node.yml"
+
+#docker pull jameshtsun/mapr520:centos72
+#docker build --tag jameshtsun/mapr520v2:centos72 -f $dockerf .
+#docker pull jameshtsun/mapr520v2:centos72
+
+docker-compose -f $composef kill `for ((i=0; i<$nnodes; i++)); do echo node$i ;done | xargs`
+docker-compose -f $composef rm -f `for ((i=0; i<$nnodes; i++)); do echo node$i ;done | xargs`
+docker-compose -f $composef up -d
+
+echo "
+127.0.0.1	localhost
+::1	localhost ip6-localhost ip6-loopback
+fe00::0	ip6-localnet
+ff00::0	ip6-mcastprefix
+ff02::1	ip6-allnodes
+ff02::2	ip6-allrouters" > /tmp/hosts
+
+for ((i=0; i<$nnodes; i++))
+do
+docker exec ${hname}$i bash -c '/usr/sbin/prep_node.sh'
+docker exec ${hname}$i bash -c 'cat /root/ips' >> /tmp/hosts
+done
+
+for ((i=0; i<$nnodes; i++))
+do
+docker cp /tmp/hosts ${hname}$i:/root/hosts
+docker exec ${hname}$i cp /root/hosts /etc/hosts
+docker exec ${hname}$i /usr/sbin/rlc.x
+done
+
+docker cp /tmp/hosts ${hname}0:/root/hosts
+
+#distribute keys
+docker cp files/id_rsa ${hname}0:/root/.ssh
+for ((i=0; i<$nnodes; i++))
+do
+docker cp files/authorized_keys ${hname}$i:/root/.ssh
+done
+
+#generate diskfile
+for ((i=0; i<$nnodes; i++))
+do
+docker exec ${hname}$i bash -c '/usr/sbin/gen_disk.sh'
+done
+
+docker exec ${hname}0 bash -c "perl /usr/sbin/mapr_inst.pl"
+docker exec ${hname}0 clush -a authconfig --enableldap --enableldapauth --ldapserver=${ldaphost} --ldapbasedn="dc=mapr,dc=com" --enablemkhomedir --update
+
+ldapgroup=`docker exec ${hname}0 id -gn $ldapuser`
+docker exec ${hname}0 hadoop fs -mkdir /user/$ldapuser
+docker exec ${hname}0 hadoop fs -chown $ldapuser /user/$ldapuser
+docker exec ${hname}0 hadoop fs -chgrp $ldapgroup /user/$ldapuser

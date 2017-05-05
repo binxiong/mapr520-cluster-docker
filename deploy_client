@@ -1,0 +1,52 @@
+#!/bin/bash
+composef="docker-compose.client.yml"
+dockerf="Dockerfile.client"
+
+#docker build -f $dockerf --tag jameshtsun/mapr-client .
+#docker pull jameshtsun/mapr-client
+
+. /tmp/env.sh
+docker-compose -f $composef kill mapr-client
+docker-compose -f $composef rm -f mapr-client
+docker-compose -f $composef up -d
+
+#Configure OpenLDAP services
+docker exec mapr-client authconfig --enableldap --enableldapauth --ldapserver=${ldaphost} --ldapbasedn="dc=mapr,dc=com" --enablemkhomedir --update
+
+#Configure Kerberos services
+docker exec mapr-client sh /usr/sbin/krb_init_client.sh
+
+#Copy hive-site.xml
+hiveconf=`docker exec ${hname}0 find /opt/mapr/hive -name conf`
+sparkconf=`docker exec ${hname}0 find /opt/mapr/spark -name conf`
+docker cp ${hname}0:$hiveconf/hive-site.xml /tmp
+docker cp /tmp/hive-site.xml mapr-client:$hiveconf
+docker cp /tmp/hive-site.xml mapr-client:$sparkconf
+
+#Misc stuff
+docker exec mapr-client yum -y install openssh-clients sshpass nfs-utils rpcbind
+docker exec mapr-client groupadd $admin -g 6000
+docker exec mapr-client useradd $admin -u 6000 -g $admin
+docker exec mapr-client bash -c "echo "$admin:$passwd" | chpasswd"
+docker exec mapr-client mkdir -p /root/.ssh
+docker exec mapr-client chmod 644 -R /root/.ssh
+docker cp files/config mapr-client:/root/.ssh
+
+#Create example drill script and copy drill executables
+docker exec mapr-client mkdir -p /mapr
+docker exec mapr-client bash -c "screen -dmS nfsmount /usr/sbin/mount_mapr"
+#docker exec mapr-client mount -t nfs -o nolock,hard ${hname}0:/mapr /mapr
+docker exec mapr-client sshpass -p $passwd scp -pr ${hname}0:/opt/mapr/drill /opt/mapr
+docker exec mapr-client sshpass -p $passwd scp -pr "${hname}0:/usr/local/bin/*" /usr/local/bin
+docker exec mapr-client sed -i s:localhost:${hname}0:g /usr/local/bin/sqlline
+docker exec mapr-client mkdir -p /opt/data/drill
+docker exec mapr-client bash -c 'echo "select * from dfs.\`/user/data/review.json\` limit 20;" > /opt/data/drill/review.sql'
+docker exec mapr-client bash -c "echo /opt/mapr/drill/drill-1.8.0/bin/sqlline -u jdbc:drill:zk=${hname}0:5181,${hname}1:5181,${hname}2:5181/drill/$clname-drillbits -f review.sql > /opt/data/drill/run"
+
+#Fix non-secure cluster mapreduce issue for ldap user
+docker exec mapr-client sshpass -p $passwd scp -pr "${hname}0:/opt/mapr/hadoop/hadoop-2.7.0/etc/hadoop/core-site.xml" /opt/mapr/hadoop/hadoop-2.7.0/etc/hadoop
+nmnodes=`docker exec ${hname}0 nodeset -e @all`
+rmnode=`docker exec ${hname}0 nodeset -e @rm`
+docker exec ${hname}0 maprcli node services -name nodemanager -action stop -nodes $nmnodes
+docker exec ${hname}0 maprcli node services -name nodemanager -action restart -nodes $rmnode
+docker exec ${hname}0 maprcli node services -name nodemanager -action start -nodes $nmnodes

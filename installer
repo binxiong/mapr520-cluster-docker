@@ -1,0 +1,102 @@
+#!/usr/bin/perl
+
+system("clear");
+while ($ans < 1 | $ans > 3) {
+print "Select security mode for this cluster to be configured \n";
+print "1. Naked (no security)\n";
+print "2. Secure (MapR ticket for MapR-FS)\n";
+print "3. Kerberized (Kerberos based)\n";
+print "Select (1-3): ";
+$ans=<stdin>;
+if ($ans == 1){$mode="base";}
+if ($ans == 2){$mode="secure";}
+if ($ans == 3){$mode="krb";}
+}
+
+if ($mode eq "base" | $mode eq "secure"){
+  print "\nCluster name <default: my-mapr520-cluster>: ";
+  $clname=<stdin>; chomp $clname; $clname="my-mapr520-cluster" if $clname eq "";
+  while ($nnodes < 3 | $nnodes > 5) {print "\nNumber of nodes in the cluster (3-5) <default: 3>: ";
+  $nnodes=<stdin>; chomp $nnodes; $nnodes=3 if $nnodes eq "";}
+  print "\nMapR admin username <default: maprdude>: ";
+  $admin=<stdin>; chomp $admin; $admin="maprdude" if $admin eq "";
+  print "\nMapR admin password <default: m\@prtest>: ";
+  $passwd=<stdin>; chomp $passwd; $passwd="m\@prtest" if $passwd eq "";
+  print "\nLDAP server hostname <default: ldap>: ";
+  $ldaphost=<stdin>; chomp $ldaphost; $ldaphost="ldap" if $ldaphost eq "";
+  print "\nLDAP user password will be set the same as that of admin's...\n";
+  print "LDAP username <default: ldapdude>: ";
+  $ldapuser=<stdin>; chomp $ldapuser; $ldapuser="ldapdude" if $ldapuser eq "";
+  $realm="EXAMPLE.COM";
+  $kdchost="kdc";
+
+while( $answer ne "y" & $answer ne "n"){
+print "\nSummary of cluster configuration:\n";
+print "1. Security mode: $mode\n";
+print "2. Cluster name: $clname\n";
+print "3. Number of nodes: $nnodes\n";
+print "4. MapR admin user: $admin\n";
+print "5. MapR admin user password: $passwd\n";
+print "6. LDAP server name: $ldaphost\n";
+print "7. LDAP user : $ldapuser\n";
+print "8. LDAP user password (same as admin user password): $passwd\n";
+print "Looks OK (y/n)? ";
+$answer=<stdin>; chomp $answer;
+}
+exit if $answer eq "n";
+}
+
+if ($mode eq "krb"){
+  print "\nCluster name <default: my-mapr520-cluster>: ";
+  $clname=<stdin>; chomp $clname; $clname="my-mapr520-cluster" if $clname eq "";
+  while ($nnodes < 3 | $nnodes > 5) {print "\nNumber of nodes in the cluster (3-5) <default: 3>: ";
+  $nnodes=<stdin>; chomp $nnodes; $nnodes=3 if $nnodes eq "";}
+  print "\nMapR admin username <default: maprdude>: ";
+  $admin=<stdin>; chomp $admin; $admin="maprdude" if $admin eq "";
+  print "\nMapR admin password <default: m\@prtest>: ";
+  $passwd=<stdin>; chomp $passwd; $passwd="m\@prtest" if $passwd eq "";
+  print "\nLDAP server hostname <default: ldap>: ";
+  $ldaphost=<stdin>; chomp $ldaphost; $ldaphost="ldap" if $ldaphost eq "";
+  print "\nLDAP user password will be set the same as that of admin's...\n";
+  print "LDAP username <default: ldapdude>: ";
+  $ldapuser=<stdin>; chomp $ldapuser; $ldapuser="ldapdude" if $ldapuser eq "";
+  print "\nKerberos REALM <default: EXAMPLE.COM>: ";
+  $realm=<stdin>; chomp $realm; $realm="EXAMPLE.COM" if $realm eq "";
+  print "\nKDC hostname <default: kdc>: ";
+  $kdchost=<stdin>; chomp $kdchost; $kdchost="kdc" if $kdchost eq "";
+
+while( $answer ne "y" & $answer ne "n"){
+print "\nSummary of cluster configuration:\n";
+print "1. Security mode: $mode\n";
+print "2. Cluster name: $clname\n";
+print "3. Number of nodes: $nnodes\n";
+print "4. MapR admin user: $admin\n";
+print "5. MapR admin user password: $passwd\n";
+print "6. LDAP server name: $ldaphost\n";
+print "7. LDAP user : $ldapuser\n";
+print "8. LDAP user password (same as admin user password): $passwd\n";
+print "9. KDC hostname: $kdchost\n";
+print "10. Kerberos REALM: $realm\n";
+print "Looks OK (y/n)? ";
+$answer=<stdin>; chomp $answer;
+}
+exit if $answer eq "n";
+
+}
+
+open(FILE, ">/tmp/env.sh");
+$hname=$clname . "-node";
+print FILE "export clname=$clname\n";
+print FILE "export hname=\${clname}-node\n";
+print FILE "export admin=$admin\n";
+print FILE "export passwd=$passwd\n";
+print FILE "export ldapuser=$ldapuser\n";
+print FILE "export nnodes=$nnodes\n";
+print FILE "export realm=$realm\n";
+print FILE "export kdchost=$kdchost\n";
+print FILE "export ldaphost=$ldaphost\n";
+print FILE "export mode=$mode\n";
+close(FILE);
+
+system("purgecontainer");
+system("./deploy_it");

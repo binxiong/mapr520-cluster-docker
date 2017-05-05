@@ -1,0 +1,15 @@
+version: '2'
+services:
+    ldap:
+        container_name: "${ldaphost}"
+        image: "jameshtsun/ldap"
+        hostname: ${ldaphost}
+        privileged: true
+        environment:
+         - "LDAP_HOST_NAME=${ldaphost}"
+         - "CL_NAME=${clname}"
+         - "ADMIN_PASSWD=${passwd}"
+         - "ADMIN_USER=${admin}"
+         - "LDAP_USER=${ldapuser}"
+        stdin_open: true
+        tty: true
